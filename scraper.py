@@ -1,12 +1,31 @@
-import re
-from urllib.parse import urlparse
+import re #was
+from urllib.parse import urlparse #was
+from bs4 import BeautifulSoup
 
-def scraper(url, resp):
+def scraper(url : str, resp : utils.response.Response) -> list:
+    '''Args:
+    url  -  The URL that was added to the frontier, and downloaded from the cache.
+            It's of type str and was a url that was previously added to the frontier.
+    resp -  This is the response given by the caching server for the requested URL.
+            The response is an object of type Response (see utils/response.py)
+            
+    returns a list of urls that are scraped from the response. (An empty list for responses
+    that are empty) These urls will be added to the Frontier and retrieved from the cache.
+    These urls have to be filtereed so that urls that do no have to be download '''
+    
     links = extract_next_links(url, resp)
-    return [link for link in links if is_valid(link)]
+    links = [link for link in links if is_valid(link)]  # is_valid, 1st step in filtering the urls
+    return link
 
 def extract_next_links(url, resp):
-    # Implementation requred.
+    # open url
+    try:
+        html = urlopen(url)
+    # page/server not found
+    except (HTTPError, URLError):
+        return list()
+    
+    cur_page = BeautifulSoup(html)
     return list()
 
 def is_valid(url):
