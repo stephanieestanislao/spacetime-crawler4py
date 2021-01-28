@@ -1,8 +1,12 @@
-import re #was
-from urllib.parse import urlparse #was
+import re
+from urllib.parse import urlparse 
 from bs4 import BeautifulSoup
 
-def scraper(url : str, resp : utils.response.Response) -> list:
+# domains we are allowed to crawl 
+domains = [".ics.uci.edu/", ".cs.uci.edu/", ".informatics.uci.edu/", \
+           ".stat.uci.edu", "today.uci.edu/department/information_computer_sciences/"]
+
+def scraper(url, resp):
     '''Args:
     url  -  The URL that was added to the frontier, and downloaded from the cache.
             It's of type str and was a url that was previously added to the frontier.
@@ -11,22 +15,62 @@ def scraper(url : str, resp : utils.response.Response) -> list:
             
     returns a list of urls that are scraped from the response. (An empty list for responses
     that are empty) These urls will be added to the Frontier and retrieved from the cache.
-    These urls have to be filtereed so that urls that do no have to be download '''
+    These urls have to be filtered so that urls that do no have to be download '''
     
     links = extract_next_links(url, resp)
     links = [link for link in links if is_valid(link)]  # is_valid, 1st step in filtering the urls
     return link
 
-def extract_next_links(url, resp):
-    # open url
-    try:
-        html = urlopen(url)
-    # page/server not found
-    except (HTTPError, URLError):
-        return list()
+def get_internal_links(cur_page, domain):
+    internal_links = []
     
+    # internal links begin with '/'
+    for link in cur_page.findAll('a', href=re.compile(r"^(/|.*)")):
+        if link.attrs["href"] != None and link.attrs["href"] not in internal_links:
+            if link.attrs["href"][0] == '/':
+                # only add websites we can crawl!
+                if link.attrs["href"][1] == '/' and re.search(link.attrs["href"], r"^(.*("+domains[0]+"|"+\
+                                                              domains[1]+"|"+domains[2]+"|"+domains[3]+"|"+\
+                                                              domains[4]+").*)"):
+                    internal_links.append(link.attrs['href'])   # may be //www.
+                else:
+                    internal_links.append(domain + link.attrs['href'])  # internal link
+    return internal_links        
+
+def get_external_links(cur_page, domain):
+    external_links = []
+    # external links begin with "http"
+    for link in cur_page.findAll('a', href=re.compile("r^(http://|www.|https://)(.*)$")):
+        if link.attr["href"] != None and link.attrs["href"] not in external_links:
+            if re.search(link.attrs["href"], r"^(.*("+domains[0]+"|"+domains[1]+"|"+domains[2]+"|"+domains[3]+\
+                         "|"+domains[4]+").*)"):
+                external_links.append(link.attrs["href"])
+    return extrernal_links
+        
+def extract_next_links(url, resp):
+    # 200 ok status means success
+    if response.status_code != 200:
+        return list();
+    
+    # prof said to use this encoding in lecture
+    #response.encoding = "utf-32"   
+     
+    # with sets, we can avoid duplicate links
+    all_links = set()
+    
+    # build a domain name
+    domain = "https://" + urlparse(url).netlock
     cur_page = BeautifulSoup(html)
-    return list()
+    internal_links = get_internal_links(cur_page, domain)
+    external_links = get_external_links(cur_page, domain)
+    
+    # add the links
+    for link in external_links:   # 'a' defines a hyperlink
+        all_links.add(link)
+    for link in internal_links:
+        all_links.add(link)
+
+    return list(all_links)
 
 def is_valid(url):
     try:
